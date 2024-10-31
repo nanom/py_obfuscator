@@ -21,9 +21,7 @@ class Decoder:
         value: str
     ) -> None:
 
-        d_path = os.path.join(self.output_dir_path, file_path)
-
-        with open(d_path, 'a+') as f:
+        with open(file_path, 'a+') as f:
             f.write(value)
 
     def __get_program_struct(
@@ -43,7 +41,7 @@ class Decoder:
 
     def execute(
         self, 
-        file_path: str,
+        input_file_path: str,
         program_struct: Dict,
         encoding_method: str
     ) -> None:
@@ -51,9 +49,14 @@ class Decoder:
         # Set program_struct as class vars
         self.program_struct = program_struct
 
+        # Determine the output file path
+        input_filename = os.path.basename(input_file_path)
+        output_filename = os.path.splitext(input_filename)[0] + "_obfuscated.py"
+        output_file_path = os.path.join(self.output_dir_path, output_filename)
+
         # Write the necessary libraries
         self.__write(
-            file_path, 
+            output_file_path,
             "import base64, codecs \n"
         )
 
@@ -61,12 +64,12 @@ class Decoder:
         for k, _ in program_struct.items():
             encode_part = self.__get_program_struct(k, 'base64_encode')
             to_write = f"{k} = '{encode_part}'\n"
-            self.__write(file_path, to_write)
+            self.__write(output_file_path, to_write)
 
         # Write custom encoding method var
         hex_name = self.str_to_hex(encoding_method)
         to_write = f"{self.encoding_var} = '{hex_name}' \n"
-        self.__write( file_path, to_write)
+        self.__write(output_file_path, to_write)
 
         # Write encoding program var
         to_write = f"{self.execute_var} = \\\n"
@@ -81,10 +84,10 @@ class Decoder:
             if ith != len(program_struct) - 1:
                 to_write += f" + \\\n"
         
-        self.__write(file_path, to_write)
+        self.__write(output_file_path, to_write)
 
         # Write cmd to decode program
         hex_name = self.str_to_hex(self.execute_var)
         cmd = f"base64.b64decode(eval('{hex_name}')).decode('utf-8')"
         to_write = f"\neval(compile({cmd},'<app>', 'exec'))"
-        self.__write(file_path, to_write)
+        self.__write(output_file_path, to_write)
